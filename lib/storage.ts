@@ -1,7 +1,7 @@
 import type { AppData, DecorationKey, Task } from './types';
 
 const STORAGE_KEY = 'pixel-garden-v1';
-const DECORATION_CYCLE: DecorationKey[] = ['cactus', 'rock', 'flower', 'bench'];
+const DECORATION_CYCLE: DecorationKey[] = ['cactus', 'rock', 'sunflower', 'bush', 'mushroom', 'fence'];
 
 const EMPTY: AppData = { user: null, tasks: [], garden: [] };
 

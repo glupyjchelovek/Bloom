@@ -8,8 +8,10 @@ import { loadData, saveData, getNextDecoration } from '@/lib/storage';
 const DECORATION_EMOJI: Record<DecorationKey, string> = {
   cactus: '🌵',
   rock: '🪨',
-  flower: '🌸',
-  bench: '🪑',
+  sunflower: '🌻',
+  bush: '🌿',
+  mushroom: '🍄',
+  fence: '🪵',
 };
 
 const AVATAR_EMOJI: Record<string, string> = {

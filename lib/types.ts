@@ -1,5 +1,5 @@
 export type AvatarId = 'forest' | 'night' | 'sunny' | 'lake';
-export type DecorationKey = 'cactus' | 'rock' | 'flower' | 'bench';
+export type DecorationKey = 'cactus' | 'rock' | 'sunflower' | 'bush' | 'mushroom' | 'fence';
 
 export interface User {
   nickname: string;

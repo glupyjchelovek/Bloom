@@ -10,8 +10,10 @@ const GRID = 16;
 const DECORATION_EMOJI: Record<DecorationKey, string> = {
   cactus: '🌵',
   rock: '🪨',
-  flower: '🌸',
-  bench: '🪑',
+  sunflower: '🌻',
+  bush: '🌿',
+  mushroom: '🍄',
+  fence: '🪵',
 };
 
 const AVATAR_EMOJI: Record<string, string> = {
@@ -25,20 +27,20 @@ function isWater(x: number, y: number) {
   return y === 0 || y === GRID - 1 || x === 0 || x === GRID - 1;
 }
 
-/** Tries sprite PNG, falls back to emoji on load error */
+/** Tries sprite PNG (pixelated, 32×32 display), falls back to emoji */
 function CellDecoration({ decoration }: { decoration: DecorationKey }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
-    return <span className="text-base leading-none select-none">{DECORATION_EMOJI[decoration]}</span>;
+    return <span className="text-xl leading-none select-none">{DECORATION_EMOJI[decoration]}</span>;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={`/sprites/${decoration}.png`}
       alt={decoration}
-      width={28}
-      height={28}
-      className="w-7 h-7 object-contain"
+      width={32}
+      height={32}
+      style={{ imageRendering: 'pixelated' }}
       onError={() => setFailed(true)}
     />
   );
@@ -127,20 +129,30 @@ function GardenContent() {
             <p className="font-pixel text-xs text-green-600 mb-3 text-center">
               ✓ Task done! Choose what to plant:
             </p>
-            <div className="flex justify-center gap-3">
-              {(Object.entries(DECORATION_EMOJI) as [DecorationKey, string][]).map(([key, emoji]) => (
+            <div className="grid grid-cols-6 gap-2 max-w-sm mx-auto">
+              {(Object.entries(DECORATION_EMOJI) as [DecorationKey, string][]).map(([key]) => (
                 <button
                   key={key}
                   onClick={() => setPending(prev => prev === key ? null : key)}
+                  title={key}
                   className={[
-                    'flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2 transition-all',
+                    'flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 transition-all',
                     pending === key
                       ? 'border-amber-400 bg-amber-50 scale-110 shadow-md'
                       : 'border-gray-200 bg-white hover:border-amber-300 hover:scale-105',
                   ].join(' ')}
                 >
-                  <span className="text-2xl">{emoji}</span>
-                  <span className="text-xs text-gray-400 mt-0.5 capitalize">{key}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/sprites/${key}.png`}
+                    alt={key}
+                    width={28}
+                    height={28}
+                    style={{ imageRendering: 'pixelated' }}
+                    onError={e => { (e.target as HTMLImageElement).style.display='none'; (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('hidden'); }}
+                  />
+                  <span hidden className="text-xl">{DECORATION_EMOJI[key]}</span>
+                  <span className="text-xs text-gray-400 mt-0.5 capitalize leading-none">{key}</span>
                 </button>
               ))}
             </div>
@@ -154,14 +166,15 @@ function GardenContent() {
         ) : (
           <>
             <p className="font-pixel text-xs text-gray-400 mb-3 text-center">Decorations</p>
-            <div className="flex justify-center gap-3">
+            <div className="grid grid-cols-6 gap-2 max-w-sm mx-auto">
               {(Object.entries(DECORATION_EMOJI) as [DecorationKey, string][]).map(([key, emoji]) => (
                 <div
                   key={key}
-                  className="flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2 border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed"
+                  title={key}
+                  className="flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed"
                 >
-                  <span className="text-2xl">{emoji}</span>
-                  <span className="text-xs text-gray-400 mt-0.5 capitalize">{key}</span>
+                  <span className="text-xl">{emoji}</span>
+                  <span className="text-xs text-gray-400 mt-0.5 capitalize leading-none">{key}</span>
                 </div>
               ))}
             </div>
@@ -184,7 +197,7 @@ function GardenContent() {
       {/* Grid */}
       <div className="overflow-x-auto">
         <div
-          className="mx-auto border-4 border-blue-400 rounded-lg overflow-hidden shadow-lg"
+          className="mx-auto border-4 border-[#5b9b8a] rounded-lg overflow-hidden shadow-lg"
           style={{ width: GRID * 40 }}
         >
           {Array.from({ length: GRID }, (_, y) => (
@@ -192,29 +205,31 @@ function GardenContent() {
               {Array.from({ length: GRID }, (_, x) => {
                 const water = isWater(x, y);
                 const dec = getDecoration(x, y);
-                const canPlace = !water && !!pending && !dec;
+                const canPlace = !water && !!pending && !!pendingTaskId && !dec;
 
                 return (
                   <div
                     key={x}
                     onClick={() => handleCell(x, y)}
-                    style={{ width: 40, height: 40 }}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      backgroundImage: water
+                        ? 'url(/sprites/water-tile.png)'
+                        : 'url(/sprites/grass-tile.png)',
+                      backgroundSize: '100% 100%',
+                      imageRendering: 'pixelated',
+                    }}
                     className={[
-                      'flex items-center justify-center border select-none transition-colors',
+                      'flex items-center justify-center border select-none',
                       water
-                        ? 'bg-blue-300 border-blue-400 cursor-default'
-                        : dec
-                        ? 'bg-green-300 border-green-400 cursor-default'
+                        ? 'bg-[#7ecdc0] border-[#5b9b8a] cursor-default'
                         : canPlace
-                        ? 'bg-green-300 border-green-400 cursor-pointer hover:bg-lime-200 active:bg-lime-300'
-                        : 'bg-green-300 border-green-400 cursor-default',
+                        ? 'bg-[#8bc34a] border-[#6a9e2e] cursor-pointer hover:brightness-110'
+                        : 'bg-[#8bc34a] border-[#6a9e2e] cursor-default',
                     ].join(' ')}
                   >
-                    {water ? (
-                      <span className="text-blue-500 text-xs font-bold opacity-50 select-none">~</span>
-                    ) : dec ? (
-                      <CellDecoration decoration={dec} />
-                    ) : null}
+                    {!water && dec && <CellDecoration decoration={dec} />}
                   </div>
                 );
               })}
