@@ -3,9 +3,32 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { DecorationKey, GardenCell } from '@/lib/types';
-import { loadData, saveData } from '@/lib/storage';
+import { loadData, saveData, clearData } from '@/lib/storage';
 
 const GRID = 16;
+
+// Organic oval island — 1 = grass (plantable), 0 = water
+const ISLAND: number[][] = [
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+  [0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+  [0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],
+  [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+
+// Avatar stands here — always a grass cell, never plantable
+const AVATAR_CELL = { x: 3, y: 4 };
 
 const DECORATION_EMOJI: Record<DecorationKey, string> = {
   cactus: '🌵',
@@ -16,30 +39,35 @@ const DECORATION_EMOJI: Record<DecorationKey, string> = {
   fence: '🪵',
 };
 
-const AVATAR_EMOJI: Record<string, string> = {
-  forest: '🌲',
-  night: '🌙',
-  sunny: '☀️',
-  lake: '💧',
-};
+const VALID_AVATARS = ['character', 'cow', 'chicken'];
 
-function isWater(x: number, y: number) {
-  return y === 0 || y === GRID - 1 || x === 0 || x === GRID - 1;
+// 3 grass tile variants, assigned deterministically by position
+const GRASS_TILES = [
+  'url(/sprites/grass-tile.png)',
+  'url(/sprites/grass-tile-b.png)',
+  'url(/sprites/grass-tile-c.png)',
+];
+function grassTile(x: number, y: number) {
+  return GRASS_TILES[(x * 3 + y * 5) % 3];
 }
 
-/** Tries sprite PNG (pixelated, 32×32 display), falls back to emoji */
+function isWater(x: number, y: number) {
+  return ISLAND[y]?.[x] !== 1;
+}
+function isAvatarCell(x: number, y: number) {
+  return x === AVATAR_CELL.x && y === AVATAR_CELL.y;
+}
+
+/** Sprite with emoji fallback */
 function CellDecoration({ decoration }: { decoration: DecorationKey }) {
   const [failed, setFailed] = useState(false);
-  if (failed) {
-    return <span className="text-xl leading-none select-none">{DECORATION_EMOJI[decoration]}</span>;
-  }
+  if (failed) return <span className="text-xl leading-none select-none">{DECORATION_EMOJI[decoration]}</span>;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={`/sprites/${decoration}.png`}
       alt={decoration}
-      width={32}
-      height={32}
+      width={32} height={32}
       style={{ imageRendering: 'pixelated' }}
       onError={() => setFailed(true)}
     />
@@ -59,7 +87,10 @@ function GardenContent() {
 
   useEffect(() => {
     const data = loadData();
-    if (!data.user) { router.replace('/'); return; }
+    if (!data.user || !VALID_AVATARS.includes(data.user.avatarId)) {
+      router.replace('/');
+      return;
+    }
     setNickname(data.user.nickname);
     setAvatarId(data.user.avatarId);
     setGarden(data.garden);
@@ -67,25 +98,22 @@ function GardenContent() {
     const taskId = params.get('taskId');
     if (taskId) {
       setPendingTaskId(taskId);
-      // pre-select the task's suggested decoration, but user can change it
       const dec = params.get('decoration') as DecorationKey | null;
       if (dec && Object.keys(DECORATION_EMOJI).includes(dec)) setPending(dec);
     }
   }, [router, params]);
 
   function handleCell(x: number, y: number) {
-    if (isWater(x, y)) return;
-    if (!pending || !pendingTaskId) return; // planting requires a completed task
+    if (isWater(x, y) || isAvatarCell(x, y)) return;
+    if (!pending || !pendingTaskId) return;
 
     const data = loadData();
     if (data.garden.find(c => c.x === x && c.y === y)) return;
 
     data.garden.push({ x, y, decoration: pending });
 
-    if (pendingTaskId) {
-      const task = data.tasks.find(t => t.id === pendingTaskId);
-      if (task) task.planted = true;
-    }
+    const task = data.tasks.find(t => t.id === pendingTaskId);
+    if (task) task.planted = true;
 
     saveData(data);
     setGarden([...data.garden]);
@@ -103,6 +131,11 @@ function GardenContent() {
     return garden.find(c => c.x === x && c.y === y)?.decoration ?? null;
   }
 
+  function logout() {
+    clearData();
+    router.replace('/');
+  }
+
   const plantedCount = garden.length;
 
   return (
@@ -116,9 +149,26 @@ function GardenContent() {
           ← Tasks
         </button>
         <h1 className="font-pixel text-green-700 text-sm">My Garden</h1>
-        <div className="flex items-center gap-2 bg-white rounded-full px-3 py-1.5 shadow border border-green-200">
-          <span className="text-base">{AVATAR_EMOJI[avatarId]}</span>
-          <span className="text-xs text-gray-600">{nickname}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white rounded-full px-3 py-1.5 shadow border border-green-200">
+            {avatarId && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/sprites/avatar-${avatarId}.png`}
+                alt={avatarId}
+                width={20} height={20}
+                style={{ imageRendering: 'pixelated', width: 20, height: 20 }}
+              />
+            )}
+            <span className="text-xs text-gray-600">{nickname}</span>
+          </div>
+          <button
+            onClick={logout}
+            className="font-pixel text-xs text-gray-400 hover:text-red-400 transition-colors"
+            title="Log out"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
@@ -146,10 +196,12 @@ function GardenContent() {
                   <img
                     src={`/sprites/${key}.png`}
                     alt={key}
-                    width={28}
-                    height={28}
+                    width={28} height={28}
                     style={{ imageRendering: 'pixelated' }}
-                    onError={e => { (e.target as HTMLImageElement).style.display='none'; (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('hidden'); }}
+                    onError={e => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('hidden');
+                    }}
                   />
                   <span hidden className="text-xl">{DECORATION_EMOJI[key]}</span>
                   <span className="text-xs text-gray-400 mt-0.5 capitalize leading-none">{key}</span>
@@ -197,15 +249,17 @@ function GardenContent() {
       {/* Grid */}
       <div className="overflow-x-auto">
         <div
-          className="mx-auto border-4 border-[#5b9b8a] rounded-lg overflow-hidden shadow-lg"
-          style={{ width: GRID * 40 }}
+          className="mx-auto rounded-lg overflow-hidden shadow-lg relative"
+          style={{ width: GRID * 40, height: GRID * 40 }}
         >
+          {/* Cells */}
           {Array.from({ length: GRID }, (_, y) => (
             <div key={y} className="flex">
               {Array.from({ length: GRID }, (_, x) => {
                 const water = isWater(x, y);
+                const avatarHere = isAvatarCell(x, y);
                 const dec = getDecoration(x, y);
-                const canPlace = !water && !!pending && !!pendingTaskId && !dec;
+                const canPlace = !water && !avatarHere && !!pending && !!pendingTaskId && !dec;
 
                 return (
                   <div
@@ -214,9 +268,7 @@ function GardenContent() {
                     style={{
                       width: 40,
                       height: 40,
-                      backgroundImage: water
-                        ? 'url(/sprites/water-tile.png)'
-                        : 'url(/sprites/grass-tile.png)',
+                      backgroundImage: water ? 'url(/sprites/water-tile.png)' : grassTile(x, y),
                       backgroundSize: '100% 100%',
                       imageRendering: 'pixelated',
                     }}
@@ -229,12 +281,31 @@ function GardenContent() {
                         : 'bg-[#8bc34a] border-[#6a9e2e] cursor-default',
                     ].join(' ')}
                   >
-                    {!water && dec && <CellDecoration decoration={dec} />}
+                    {!water && !avatarHere && dec && <CellDecoration decoration={dec} />}
                   </div>
                 );
               })}
             </div>
           ))}
+
+          {/* Avatar overlay — positioned over AVATAR_CELL */}
+          {avatarId && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/sprites/avatar-${avatarId}.png`}
+              alt={avatarId}
+              style={{
+                position: 'absolute',
+                left: AVATAR_CELL.x * 40,
+                top: AVATAR_CELL.y * 40,
+                width: 40,
+                height: 40,
+                imageRendering: 'pixelated',
+                zIndex: 10,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
         </div>
       </div>
 

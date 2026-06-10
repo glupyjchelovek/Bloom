@@ -21,6 +21,11 @@ export function saveData(data: AppData): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+export function clearData(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 export function getNextDecoration(tasks: Task[]): DecorationKey {
   return DECORATION_CYCLE[tasks.length % DECORATION_CYCLE.length];
 }

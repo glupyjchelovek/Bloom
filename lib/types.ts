@@ -1,4 +1,4 @@
-export type AvatarId = 'forest' | 'night' | 'sunny' | 'lake';
+export type AvatarId = 'character' | 'cow' | 'chicken';
 export type DecorationKey = 'cactus' | 'rock' | 'sunflower' | 'bush' | 'mushroom' | 'fence';
 
 export interface User {

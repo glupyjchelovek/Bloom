@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import type { AvatarId } from '@/lib/types';
 import { loadData, saveData } from '@/lib/storage';
 
-const AVATARS: { id: AvatarId; emoji: string; label: string }[] = [
-  { id: 'forest', emoji: '🌲', label: 'Forest' },
-  { id: 'night', emoji: '🌙', label: 'Night' },
-  { id: 'sunny', emoji: '☀️', label: 'Sunny' },
-  { id: 'lake', emoji: '💧', label: 'Lake' },
+const VALID_AVATARS: AvatarId[] = ['character', 'cow', 'chicken'];
+
+const AVATARS: { id: AvatarId; label: string; hint: string }[] = [
+  { id: 'character', label: 'Farmer', hint: 'hard worker' },
+  { id: 'cow', label: 'Cow', hint: 'gentle giant' },
+  { id: 'chicken', label: 'Chicken', hint: 'early bird' },
 ];
 
 export default function LoginPage() {
@@ -20,13 +21,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     const data = loadData();
-    if (data.user) router.replace('/tasks');
+    if (data.user && VALID_AVATARS.includes(data.user.avatarId)) {
+      router.replace('/tasks');
+    }
   }, [router]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nickname.trim()) { setError('Please enter a nickname!'); return; }
-    if (!selected) { setError('Please pick an avatar!'); return; }
+    if (!selected) { setError('Pick your character!'); return; }
 
     const data = loadData();
     data.user = { nickname: nickname.trim(), avatarId: selected };
@@ -61,22 +64,31 @@ export default function LoginPage() {
 
           <div>
             <label className="block font-pixel text-xs text-gray-500 mb-3">
-              Pick Your Vibe
+              Pick Your Character
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               {AVATARS.map(av => (
                 <button
                   key={av.id}
                   type="button"
                   onClick={() => { setSelected(av.id); setError(''); }}
-                  className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${
+                  className={[
+                    'flex flex-col items-center justify-center py-4 rounded-xl border-2 transition-all gap-2',
                     selected === av.id
-                      ? 'border-green-500 bg-green-50 scale-105 shadow-sm'
-                      : 'border-gray-200 hover:border-green-300'
-                  }`}
+                      ? 'border-green-500 bg-green-50 scale-105 shadow-md'
+                      : 'border-gray-200 hover:border-green-300',
+                  ].join(' ')}
                 >
-                  <span className="text-2xl">{av.emoji}</span>
-                  <span className="text-xs text-gray-400 mt-1">{av.label}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/sprites/avatar-${av.id}.png`}
+                    alt={av.label}
+                    width={48}
+                    height={48}
+                    style={{ imageRendering: 'pixelated', width: 48, height: 48 }}
+                  />
+                  <span className="font-pixel text-xs text-gray-600">{av.label}</span>
+                  <span className="text-xs text-gray-400 italic">{av.hint}</span>
                 </button>
               ))}
             </div>

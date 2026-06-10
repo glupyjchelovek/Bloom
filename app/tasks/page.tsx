@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Task, DecorationKey } from '@/lib/types';
-import { loadData, saveData, getNextDecoration } from '@/lib/storage';
+import { loadData, saveData, getNextDecoration, clearData } from '@/lib/storage';
 
 const DECORATION_EMOJI: Record<DecorationKey, string> = {
   cactus: '🌵',
@@ -14,12 +14,7 @@ const DECORATION_EMOJI: Record<DecorationKey, string> = {
   fence: '🪵',
 };
 
-const AVATAR_EMOJI: Record<string, string> = {
-  forest: '🌲',
-  night: '🌙',
-  sunny: '☀️',
-  lake: '💧',
-};
+const VALID_AVATARS = ['character', 'cow', 'chicken'];
 
 export default function TasksPage() {
   const router = useRouter();
@@ -30,7 +25,10 @@ export default function TasksPage() {
 
   useEffect(() => {
     const data = loadData();
-    if (!data.user) { router.replace('/'); return; }
+    if (!data.user || !VALID_AVATARS.includes(data.user.avatarId)) {
+      router.replace('/');
+      return;
+    }
     setNickname(data.user.nickname);
     setAvatarId(data.user.avatarId);
     setTasks(data.tasks);
@@ -66,6 +64,11 @@ export default function TasksPage() {
     router.push(`/garden?decoration=${task.reward}&taskId=${task.id}`);
   }
 
+  function logout() {
+    clearData();
+    router.replace('/');
+  }
+
   const doneCount = tasks.filter(t => t.done).length;
   const plantedCount = tasks.filter(t => t.planted).length;
 
@@ -74,9 +77,27 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex items-center justify-between mt-4 mb-6">
         <h1 className="font-pixel text-green-700 text-base">Tasks</h1>
-        <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow border border-green-200">
-          <span className="text-lg">{AVATAR_EMOJI[avatarId]}</span>
-          <span className="text-sm text-gray-600 font-medium">{nickname}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white rounded-full px-3 py-1.5 shadow border border-green-200">
+            {avatarId && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/sprites/avatar-${avatarId}.png`}
+                alt={avatarId}
+                width={24}
+                height={24}
+                style={{ imageRendering: 'pixelated', width: 24, height: 24 }}
+              />
+            )}
+            <span className="text-sm text-gray-600 font-medium">{nickname}</span>
+          </div>
+          <button
+            onClick={logout}
+            className="font-pixel text-xs text-gray-400 hover:text-red-400 transition-colors"
+            title="Log out"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
@@ -131,7 +152,6 @@ export default function TasksPage() {
               task.done ? 'border-green-200 bg-green-50' : 'border-gray-100'
             }`}
           >
-            {/* Checkbox */}
             <button
               onClick={() => toggleDone(task.id)}
               className={`w-7 h-7 rounded-full border-2 flex-shrink-0 flex items-center justify-center text-sm transition-all ${
@@ -142,22 +162,12 @@ export default function TasksPage() {
             >
               {task.done && '✓'}
             </button>
-
-            {/* Title */}
-            <span
-              className={`flex-1 text-sm leading-snug ${
-                task.done ? 'line-through text-gray-400' : 'text-gray-700'
-              }`}
-            >
+            <span className={`flex-1 text-sm leading-snug ${task.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>
               {task.title}
             </span>
-
-            {/* Reward badge */}
             <span className="text-xl flex-shrink-0" title={`Reward: ${task.reward}`}>
               {DECORATION_EMOJI[task.reward]}
             </span>
-
-            {/* Plant it / Planted */}
             {task.done && !task.planted && (
               <button
                 onClick={() => plantIt(task)}
@@ -173,7 +183,6 @@ export default function TasksPage() {
         ))}
       </div>
 
-      {/* Go to garden */}
       <div className="mt-8 text-center">
         <button
           onClick={() => router.push('/garden')}
