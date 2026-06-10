@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-pixel: 'Press Start 2P', monospace;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-pixel {
+  font-family: var(--font-pixel);
+  line-height: 1.8;
+}
