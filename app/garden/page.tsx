@@ -119,15 +119,32 @@ function GardenContent() {
         </div>
       </div>
 
-      {/* Placement hint */}
-      {pending && (
-        <div className="text-center mb-3">
-          <div className="inline-flex items-center gap-2 bg-amber-100 border-2 border-amber-400 rounded-xl px-4 py-2">
-            <span className="text-xl">{DECORATION_EMOJI[pending]}</span>
-            <span className="font-pixel text-xs text-amber-700">Click a grass tile to plant!</span>
-          </div>
+      {/* Decoration palette */}
+      <div className="max-w-[664px] mx-auto mb-4">
+        <p className="font-pixel text-xs text-gray-400 mb-2 text-center">Pick what to plant</p>
+        <div className="flex justify-center gap-3">
+          {(Object.entries(DECORATION_EMOJI) as [DecorationKey, string][]).map(([key, emoji]) => (
+            <button
+              key={key}
+              onClick={() => setPending(prev => prev === key ? null : key)}
+              className={[
+                'flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2 transition-all',
+                pending === key
+                  ? 'border-amber-400 bg-amber-50 scale-110 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-amber-300 hover:scale-105',
+              ].join(' ')}
+            >
+              <span className="text-2xl">{emoji}</span>
+              <span className="text-xs text-gray-400 mt-0.5 capitalize">{key}</span>
+            </button>
+          ))}
         </div>
-      )}
+        {pending && (
+          <p className="font-pixel text-xs text-amber-600 text-center mt-3">
+            {DECORATION_EMOJI[pending]} selected — click a grass tile!
+          </p>
+        )}
+      </div>
 
       {/* Flash message */}
       {flash && (
@@ -180,14 +197,9 @@ function GardenContent() {
         </div>
       </div>
 
-      {/* Footer info */}
-      <div className="max-w-[664px] mx-auto mt-4 flex items-center justify-between text-xs text-gray-400">
-        <div className="flex gap-4">
-          {(Object.entries(DECORATION_EMOJI) as [DecorationKey, string][]).map(([k, e]) => (
-            <span key={k}>{e} <span className="capitalize">{k}</span></span>
-          ))}
-        </div>
-        <span className="font-pixel">{plantedCount} planted</span>
+      {/* Footer */}
+      <div className="max-w-[664px] mx-auto mt-4 text-center">
+        <span className="font-pixel text-xs text-gray-400">{plantedCount} planted</span>
       </div>
     </main>
   );
