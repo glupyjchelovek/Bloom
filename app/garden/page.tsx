@@ -62,17 +62,18 @@ function GardenContent() {
     setAvatarId(data.user.avatarId);
     setGarden(data.garden);
 
-    const dec = params.get('decoration') as DecorationKey | null;
     const taskId = params.get('taskId');
-    if (dec && Object.keys(DECORATION_EMOJI).includes(dec)) {
-      setPending(dec);
+    if (taskId) {
       setPendingTaskId(taskId);
+      // pre-select the task's suggested decoration, but user can change it
+      const dec = params.get('decoration') as DecorationKey | null;
+      if (dec && Object.keys(DECORATION_EMOJI).includes(dec)) setPending(dec);
     }
   }, [router, params]);
 
   function handleCell(x: number, y: number) {
     if (isWater(x, y)) return;
-    if (!pending) return;
+    if (!pending || !pendingTaskId) return; // planting requires a completed task
 
     const data = loadData();
     if (data.garden.find(c => c.x === x && c.y === y)) return;
@@ -121,28 +122,53 @@ function GardenContent() {
 
       {/* Decoration palette */}
       <div className="max-w-[664px] mx-auto mb-4">
-        <p className="font-pixel text-xs text-gray-400 mb-2 text-center">Pick what to plant</p>
-        <div className="flex justify-center gap-3">
-          {(Object.entries(DECORATION_EMOJI) as [DecorationKey, string][]).map(([key, emoji]) => (
-            <button
-              key={key}
-              onClick={() => setPending(prev => prev === key ? null : key)}
-              className={[
-                'flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2 transition-all',
-                pending === key
-                  ? 'border-amber-400 bg-amber-50 scale-110 shadow-md'
-                  : 'border-gray-200 bg-white hover:border-amber-300 hover:scale-105',
-              ].join(' ')}
-            >
-              <span className="text-2xl">{emoji}</span>
-              <span className="text-xs text-gray-400 mt-0.5 capitalize">{key}</span>
-            </button>
-          ))}
-        </div>
-        {pending && (
-          <p className="font-pixel text-xs text-amber-600 text-center mt-3">
-            {DECORATION_EMOJI[pending]} selected — click a grass tile!
-          </p>
+        {pendingTaskId ? (
+          <>
+            <p className="font-pixel text-xs text-green-600 mb-3 text-center">
+              ✓ Task done! Choose what to plant:
+            </p>
+            <div className="flex justify-center gap-3">
+              {(Object.entries(DECORATION_EMOJI) as [DecorationKey, string][]).map(([key, emoji]) => (
+                <button
+                  key={key}
+                  onClick={() => setPending(prev => prev === key ? null : key)}
+                  className={[
+                    'flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2 transition-all',
+                    pending === key
+                      ? 'border-amber-400 bg-amber-50 scale-110 shadow-md'
+                      : 'border-gray-200 bg-white hover:border-amber-300 hover:scale-105',
+                  ].join(' ')}
+                >
+                  <span className="text-2xl">{emoji}</span>
+                  <span className="text-xs text-gray-400 mt-0.5 capitalize">{key}</span>
+                </button>
+              ))}
+            </div>
+            <p className="font-pixel text-xs text-center mt-3">
+              {pending
+                ? <span className="text-amber-600">{DECORATION_EMOJI[pending]} selected — click a grass tile!</span>
+                : <span className="text-gray-400">↑ Pick one above, then click a grass tile</span>
+              }
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-pixel text-xs text-gray-400 mb-3 text-center">Decorations</p>
+            <div className="flex justify-center gap-3">
+              {(Object.entries(DECORATION_EMOJI) as [DecorationKey, string][]).map(([key, emoji]) => (
+                <div
+                  key={key}
+                  className="flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2 border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed"
+                >
+                  <span className="text-2xl">{emoji}</span>
+                  <span className="text-xs text-gray-400 mt-0.5 capitalize">{key}</span>
+                </div>
+              ))}
+            </div>
+            <p className="font-pixel text-xs text-gray-400 text-center mt-3">
+              Complete a task and tap &quot;Plant it!&quot; to unlock 🔒
+            </p>
+          </>
         )}
       </div>
 
